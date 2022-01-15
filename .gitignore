@@ -33,3 +33,5 @@
 SES/.vs
 SES/Debug
 
+sesc/Debug
+*.pdb

@@ -1,0 +1,18 @@
+﻿// comment
+/*
+   multiline comment
+*/
+
+__module app;
+__import ses;
+
+__globals
+{
+	uint8 g_a = 0;
+}
+
+__main()
+{
+	free();
+	return error_code;
+}
