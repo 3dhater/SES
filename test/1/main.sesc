@@ -1,7 +1,5 @@
-﻿// comment
-/*
-   multiline comment
-*/
+﻿/// / comment
+/* asd*/
 
 __module app;
 __import ses;

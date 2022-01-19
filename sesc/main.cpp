@@ -92,30 +92,9 @@ int main(int argc, char* argv[])
 
 	if (cd.input_files.size())
 	{
-		cd.m_keyWords.insert("uint8");
-		cd.m_keyWords.insert("uint16");
-		cd.m_keyWords.insert("uint32");
-		cd.m_keyWords.insert("uint64");
-		cd.m_keyWords.insert("int8");
-		cd.m_keyWords.insert("int16");
-		cd.m_keyWords.insert("int32");
-		cd.m_keyWords.insert("int64");
-		cd.m_keyWords.insert("float16");
-		cd.m_keyWords.insert("float32");
-		cd.m_keyWords.insert("float64");
-		cd.m_keyWords.insert("__module");
-		cd.m_keyWords.insert("__main");
-		cd.m_keyWords.insert("__globals");
-		cd.m_keyWords.insert("__globals_private");
-		cd.m_keyWords.insert("___import");
-		cd.m_keyWords.insert("const");
-		cd.m_keyWords.insert("if");
-		cd.m_keyWords.insert("for");
-		cd.m_keyWords.insert("while");
-		cd.m_keyWords.insert("break");
-		cd.m_keyWords.insert("return");
+		cd._initKeyWords();
 
-		for (int i = 0; i < cd.input_files.size(); ++i)
+		for (uint32_t i = 0; i < cd.input_files.size(); ++i)
 		{
 			printf("[1/2] [%s]...\n", cd.input_files[i].c_str());
 
@@ -141,14 +120,80 @@ int main(int argc, char* argv[])
 				}
 				if (file_sz)
 				{
-					cd.text_buffer = new unsigned char[file_sz+1];
-					fread(cd.text_buffer, file_sz + 1, 1, file);
-					cd.text_buffer[file_sz] = 0;
-					cd.text_currPosition = cd.text_buffer;
+					unsigned char * text_buffer = new unsigned char[file_sz+1];
+					fread(text_buffer, file_sz + 1, 1, file);
+					text_buffer[file_sz] = 0;
+
+					for (int i = 0; i < file_sz; ++i)
+					{
+						wchar_t wch = 0;
+
+						unsigned char ch = text_buffer[i];
+
+						if (ch >= 0 && ch < 0x80)
+						{
+							wch = ch;
+						}
+						else if (ch >= 0xC0 && ch < 0xE0)
+						{
+							if (i + 1 < file_sz)
+							{
+								unsigned char ch2 = text_buffer[i+1];
+
+								if (ch2)
+								{
+									wchar_t char16 = 0;
+									char16 = ch;
+									char16 ^= 0xC0;
+									char16 <<= 6;
+									char16 |= (ch2 ^ 0x80);
+
+									wch = char16;
+								}
+							}
+						}
+						else if (ch >= 0xE0 && ch < 0xF0) // 3
+						{
+							if (i + 1 < file_sz)
+							{
+								unsigned char ch2 = text_buffer[i + 1];
+
+								if (ch2)
+								{
+									if (i + 1 < file_sz)
+									{
+										unsigned char ch3 = text_buffer[i + 2];
+										if (ch3)
+										{
+											wchar_t char16 = 0;
+											char16 = ch;
+											char16 ^= 0xE0;
+											char16 <<= 12;
+											char16 |= (ch2 ^ 0x80) << 6;
+											char16 |= (ch3 ^ 0x80);
+
+											wch = char16;
+										}
+									}
+								}
+							}
+						}
+						cd.text_buffer.push_back(wch);
+					}
+					cd.text_currPosition = cd.text_buffer.data();
+					//wprintf(L"\n%s\n", cd.text_buffer.c_str());
+					delete text_buffer;
+					//cd.text_currPosition = cd.text_buffer;
 				}
 				fclose(file);
 
 				SESC_stage1(&cd);
+
+				if (!cd.m_moduleKeyIsFound)
+				{
+					SESC_printError(&cd, L"`__module` not found or there's some error");
+					continue;
+				}
 			}
 		}
 	}
