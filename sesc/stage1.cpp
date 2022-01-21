@@ -249,6 +249,66 @@ void SESC_getToken(SESC_compilation_data* cd, wchar_t* str)
 	}
 }
 
+// Нужно получить список, модуль-файл.
+// Текущий файл может иметь "__module", если нет то значит этот файл не виден для других файлов,
+//  а значит его надо проигнорировать.
+// Два раза "__module" не может быть.
+// "__module" не может находится в { }
+void SESC_stage0(SESC_compilation_data* cd)
+{
+	memset(token1, 0, SESC_TokenSizeMax * sizeof(wchar_t));
+	memset(token2, 0, SESC_TokenSizeMax * sizeof(wchar_t));
+	
+	cd->m_tokenCol = 0;
+	cd->m_tokenLine = 0;
+	cd->m_moduleKeyIsFound = false;
+
+	CompilerState cs = CompilerState_Free;
+	while (*cd->text_currPosition)
+	{
+		SESC_getToken(cd, token1);
+		switch (cs)
+		{
+		case CompilerState_Free:
+		{
+			if (token1[0] == L'/')
+			{
+				if (token1[2] == L'/')
+					SESC_lineComment(cd);
+				else if (token1[2] == L'*')
+				{
+					cd->text_currPosition++;
+					cd->m_col++;
+					SESC_multilineComment(cd);
+				}
+				else
+					SESC_printErrorLn(cd, L"Unexpected token '%s' (expect / or *)", token1);
+			}
+			else if (token1[0] == L'{')
+			{
+				cd->m_blockCount++;
+			}
+			else if (token1[0] == L'}')
+			{
+				if(cd->m_blockCount)
+					cd->m_blockCount--;
+			}
+			else if (token1[0] == L'_' || SESC_charIsAlpha(token1[0]))
+			{
+				auto it = cd->m_keyWords.find(token1);
+				if (it != cd->m_keyWords.end())
+				{
+					it->second(cd);
+				}
+			}
+		}break;
+		}
+	}
+	
+	//if (cd->m_moduleKeyIsFound)
+	//	wprintf(L"MODULE %s\n", cd->module_name.data());
+}
+
 void SESC_stage1(SESC_compilation_data* cd)
 {
 	CompilerState cs = CompilerState_Free;
@@ -257,14 +317,12 @@ void SESC_stage1(SESC_compilation_data* cd)
 	memset(token1, 0, SESC_TokenSizeMax * sizeof(wchar_t));
 	memset(token2, 0, SESC_TokenSizeMax * sizeof(wchar_t));
 
-	while (*cd->text_currPosition)
+	/*while (*cd->text_currPosition)
 	{
 		SESC_getToken(cd, token1);
-		//wprintf(L"[%s] %i %i\n", token1, ln, col);
 
 		switch (cs)
 		{
-		
 		case CompilerState_Free:
 		{
 			if (token1[0] == L'/')
@@ -285,7 +343,6 @@ void SESC_stage1(SESC_compilation_data* cd)
 				auto it = cd->m_keyWords.find(token1);
 				if (it != cd->m_keyWords.end())
 				{
-				//	wprintf(L"[%s] %i %i\n", token1, cd->m_tokenLine, cd->m_tokenCol);
 					it->second(cd);
 				}
 				else
@@ -293,13 +350,11 @@ void SESC_stage1(SESC_compilation_data* cd)
 					SESC_printErrorLn(cd, L"Unexpected token '%s'", token1);
 				}
 			}
-			//else if(!SESC_charIsSpace(token1[0]))
-			//	SESC_printErrorLn(cd, L"Unexpected character '%c'", token1[0]);
 
 		}break;
 
 		}
-	}
+	}*/
 }
 
 void SESC_keywordFunction_uint8(SESC_compilation_data* cd) {}
@@ -314,8 +369,15 @@ void SESC_keywordFunction_float16(SESC_compilation_data* cd) {}
 void SESC_keywordFunction_float32(SESC_compilation_data* cd) {}
 void SESC_keywordFunction_float64(SESC_compilation_data* cd) {}
 // Ожидается имя модуля и ;
-void SESC_keywordFunction___module(SESC_compilation_data* cd) 
+void SESC_keywordFunction___module(SESC_compilation_data* cd)
 {
+	if (cd->m_blockCount)
+	{
+		SESC_printErrorLn(cd, L"`__module` can not be placed inside {} block");
+		cd->m_good = false;
+		return;
+	}
+
 	if (cd->m_moduleKeyIsFound)
 	{
 		SESC_printErrorLn(cd, L"`__module` redefinition");
@@ -330,6 +392,7 @@ void SESC_keywordFunction___module(SESC_compilation_data* cd)
 
 		if (token2[0] == L';')
 		{
+			cd->module_name = token1;
 			cd->m_moduleKeyIsFound = true;
 		}
 		else
@@ -341,7 +404,9 @@ void SESC_keywordFunction___module(SESC_compilation_data* cd)
 	else
 	{
 		SESC_printErrorLn(cd, L"Unexpected token [%s]", token1);
+		SESC_printError(cd, L"Need module name");
 	}
+	return;
 }
 void SESC_keywordFunction___main(SESC_compilation_data* cd) {}
 void SESC_keywordFunction___globals(SESC_compilation_data* cd) {}

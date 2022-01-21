@@ -36,7 +36,7 @@ Language
 		__main{ return 0; } - C main, return integer. Only 1 per comp. unit.
 		__globals{} - put all global variables inside this block. Only 1 per comp. unit.
 		__globals_private{} - same as __globals but other modules will not see this variables. Only 1 per comp. unit.
-		__module name; - every compilation unit must have this. Only 1 per comp. unit.
+		__module name; - add this if other files need to see this file.
 		__import name; - use other module.
 		
 		const
