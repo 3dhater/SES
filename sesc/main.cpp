@@ -152,10 +152,20 @@ int main(int argc, char* argv[])
 			printf("[1/2] [%s]...\n", cd.input_files[i].c_str());
 			
 			cd.OnNewFile();
+			cd.m_currFilePath = cd.input_files[i];
 
-			SESC_GetTextFromFile(cd.input_files[i].c_str(), &cd.text_buffer);
+			SESC_GetTextFromFile(cd.m_currFilePath.c_str(), &cd.text_buffer);
 			cd.text_currPosition = cd.text_buffer.data();
-			SESC_stage0(&cd); // module-fileName
+
+			cd.m_compiler_state = SESC_CompilerState_Stage0;
+			cd.m_moduleKeyIsFound = false;
+			// Нужно получить список, модуль-файл.
+			// Текущий файл может иметь "__module", если нет то значит 
+			//  этот файл не виден для других файлов,
+			//  а значит его надо проигнорировать.
+			// Два раза "__module" не может быть.
+			// "__module" не может находится в { }
+			SESC_doWork(&cd); // module-fileName
 
 			if (cd.m_moduleKeyIsFound)
 			{
@@ -170,6 +180,66 @@ int main(int argc, char* argv[])
 					n.m_files.push_back(cd.input_files[i]);
 					cd.m_moduleFileListMap[cd.module_name] = n;
 				}
+			}
+		}
+
+		if (cd.m_good)
+		{
+			for (uint32_t i = 0; i < cd.input_files.size(); ++i)
+			{
+				printf("[2/2] [%s]...\n", cd.input_files[i].c_str());
+
+				cd.OnNewFile();
+				cd.m_currFilePath = cd.input_files[i];
+
+				SESC_GetTextFromFile(cd.input_files[i].c_str(), &cd.text_buffer);
+				cd.text_currPosition = cd.text_buffer.data();
+
+				cd.m_compiler_state = SESC_CompilerState_Stage1;
+				SESC_doWork(&cd); // read all import
+				if (cd.m_importModuleList.size())
+				{
+					for (size_t o = 0, sz = cd.m_importModuleList.size(); o < sz; ++o)
+					{
+						cd.OnNewFile();
+						cd.m_currFilePath = cd.m_importModuleList[o];
+						SESC_GetTextFromFile(cd.m_currFilePath.c_str(), &cd.text_buffer);
+						cd.text_currPosition = cd.text_buffer.data();
+
+						SESC_doWork(&cd); // read all import
+					}
+				}
+
+				//SESC_stage2(&cd); // compile
+
+				// scan all other .sesc (#include)
+				if (cd.m_importModuleList.size())
+				{
+					std::set<std::string> skipThis;
+					cd.m_compiler_state = SESC_CompilerState_ScanImport;
+
+					for (size_t i2 = cd.m_importModuleList.size() - 1; i2 >= 0; )
+					{
+						auto & md = cd.m_importModuleList[i2];
+						auto it = skipThis.find(md);
+						if (it == skipThis.end())
+						{
+							skipThis.insert(md);
+
+							cd.OnNewFile();
+							cd.m_currFilePath = md;
+							SESC_GetTextFromFile(cd.m_currFilePath.c_str(), &cd.text_buffer);
+							cd.text_currPosition = cd.text_buffer.data();
+							SESC_doWork(&cd);
+						}
+
+						if (i2 == 0)
+							break;
+						i2--;
+					}
+				}
+
+				cd.m_importModuleList.clear();
 			}
 		}
 

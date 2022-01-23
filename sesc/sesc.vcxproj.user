@@ -3,21 +3,21 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>../test/1/main.sesc</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>../test/1/main.sesc ../test/1/1.sesc</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>../test/1/main.sesc</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>../test/1/main.sesc ../test/1/1.sesc</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>../test/1/main.sesc</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>../test/1/main.sesc ../test/1/1.sesc</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>../test/1/main.sesc</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>../test/1/main.sesc ../test/1/1.sesc</LocalDebuggerCommandArguments>
   </PropertyGroup>
 </Project>

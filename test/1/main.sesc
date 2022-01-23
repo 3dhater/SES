@@ -4,8 +4,9 @@
 	comment
 */
 
-__module as;
-__import ses;
+__module app;
+__import app;
+__import math;
 
 __globals
 {

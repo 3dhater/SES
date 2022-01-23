@@ -1,11 +1,4 @@
-﻿/// / comment
-/* 
-	multiline
-	comment
-*/
-
-__module as;
-__import ses;
+﻿__module math;
 
 __globals
 {

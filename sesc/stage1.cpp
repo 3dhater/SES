@@ -17,13 +17,6 @@ bool SESC_charIsSpace(wchar_t c)
 }
 
 
-// Если делать всё на подобных стейтах то всё будет чётко, но возможно будет много свитчей
-// Главное хорошо продумать и не стесняться добавлять новые.
-enum CompilerState
-{
-	CompilerState_Free, // компилятор ничего не ожидает, или по другому он ждёт хоть что-то
-};
-
 bool SESC_charIsSymbol(wchar_t c)
 {
 	if (c > 0x20 && c < 0x30)
@@ -249,27 +242,23 @@ void SESC_getToken(SESC_compilation_data* cd, wchar_t* str)
 	}
 }
 
-// Нужно получить список, модуль-файл.
-// Текущий файл может иметь "__module", если нет то значит этот файл не виден для других файлов,
-//  а значит его надо проигнорировать.
-// Два раза "__module" не может быть.
-// "__module" не может находится в { }
-void SESC_stage0(SESC_compilation_data* cd)
+void SESC_doWork(SESC_compilation_data* cd)
 {
+	std::wstring current_word;
+	
 	memset(token1, 0, SESC_TokenSizeMax * sizeof(wchar_t));
 	memset(token2, 0, SESC_TokenSizeMax * sizeof(wchar_t));
-	
+
 	cd->m_tokenCol = 0;
 	cd->m_tokenLine = 0;
-	cd->m_moduleKeyIsFound = false;
 
-	CompilerState cs = CompilerState_Free;
 	while (*cd->text_currPosition)
 	{
 		SESC_getToken(cd, token1);
-		switch (cs)
+		switch (cd->m_compiler_state)
 		{
-		case CompilerState_Free:
+		case SESC_CompilerState_Stage0:
+		case SESC_CompilerState_Stage1:
 		{
 			if (token1[0] == L'/')
 			{
@@ -290,7 +279,7 @@ void SESC_stage0(SESC_compilation_data* cd)
 			}
 			else if (token1[0] == L'}')
 			{
-				if(cd->m_blockCount)
+				if (cd->m_blockCount)
 					cd->m_blockCount--;
 			}
 			else if (token1[0] == L'_' || SESC_charIsAlpha(token1[0]))
@@ -304,57 +293,6 @@ void SESC_stage0(SESC_compilation_data* cd)
 		}break;
 		}
 	}
-	
-	//if (cd->m_moduleKeyIsFound)
-	//	wprintf(L"MODULE %s\n", cd->module_name.data());
-}
-
-void SESC_stage1(SESC_compilation_data* cd)
-{
-	CompilerState cs = CompilerState_Free;
-	std::wstring current_word;
-	
-	memset(token1, 0, SESC_TokenSizeMax * sizeof(wchar_t));
-	memset(token2, 0, SESC_TokenSizeMax * sizeof(wchar_t));
-
-	/*while (*cd->text_currPosition)
-	{
-		SESC_getToken(cd, token1);
-
-		switch (cs)
-		{
-		case CompilerState_Free:
-		{
-			if (token1[0] == L'/')
-			{
-				if(token1[2] == L'/')
-					SESC_lineComment(cd);
-				else if (token1[2] == L'*')
-				{
-					cd->text_currPosition++;
-					cd->m_col++;
-					SESC_multilineComment(cd);
-				}
-				else 
-					SESC_printErrorLn(cd, L"Unexpected token '%s' (expect / or *)", token1);
-			}
-			else if (token1[0] == L'_' || SESC_charIsAlpha(token1[0]))
-			{
-				auto it = cd->m_keyWords.find(token1);
-				if (it != cd->m_keyWords.end())
-				{
-					it->second(cd);
-				}
-				else
-				{
-					SESC_printErrorLn(cd, L"Unexpected token '%s'", token1);
-				}
-			}
-
-		}break;
-
-		}
-	}*/
 }
 
 void SESC_keywordFunction_uint8(SESC_compilation_data* cd) {}
@@ -406,12 +344,62 @@ void SESC_keywordFunction___module(SESC_compilation_data* cd)
 		SESC_printErrorLn(cd, L"Unexpected token [%s]", token1);
 		SESC_printError(cd, L"Need module name");
 	}
-	return;
 }
 void SESC_keywordFunction___main(SESC_compilation_data* cd) {}
 void SESC_keywordFunction___globals(SESC_compilation_data* cd) {}
 void SESC_keywordFunction___globals_private(SESC_compilation_data* cd) {}
-void SESC_keywordFunction___import(SESC_compilation_data* cd) {}
+void SESC_keywordFunction___import(SESC_compilation_data* cd) 
+{
+	if (cd->m_blockCount)
+	{
+		SESC_printErrorLn(cd, L"`__import` can not be placed inside {} block");
+		cd->m_good = false;
+		return;
+	}
+
+	SESC_getToken(cd, token1);
+	if (token1[0] == L'_' || SESC_charIsAlpha(token1[0]))
+	{
+		SESC_getToken(cd, token2);
+
+		if (token2[0] == L';')
+		{
+			if (cd->m_compiler_state == SESC_CompilerState_Stage1)
+			{
+				auto it = cd->m_moduleFileListMap.find(token1);
+				if (it == cd->m_moduleFileListMap.end())
+				{
+					SESC_printErrorLn(cd, L"Import module '%s' failed", token1);
+				}
+				else
+				{
+					for (auto & o : it->second.m_files)
+					{
+						if (cd->m_currFilePath != o)
+						{
+							// добавить для дальнейшего этапа
+							cd->m_importModuleList.push_back(o);
+						}
+						else
+						{
+					//		printf("SAME\n");
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			SESC_printErrorLn(cd, L"Unexpected token '%s' after '%s'", token2, token1);
+			SESC_printError(cd, L"Need ';' after '%s'", token1);
+		}
+	}
+	else
+	{
+		SESC_printErrorLn(cd, L"Unexpected token [%s]", token1);
+		SESC_printError(cd, L"Need imported module name");
+	}
+}
 void SESC_keywordFunction_const(SESC_compilation_data* cd) {}
 void SESC_keywordFunction_if(SESC_compilation_data* cd) {}
 void SESC_keywordFunction_for(SESC_compilation_data* cd) {}
@@ -436,7 +424,7 @@ void SESC_compilation_data::_initKeyWords()
 	m_keyWords[L"__main"] = SESC_keywordFunction___main;
 	m_keyWords[L"__globals"] = SESC_keywordFunction___globals;
 	m_keyWords[L"__globals_private"] = SESC_keywordFunction___globals_private;
-	m_keyWords[L"___import"] = SESC_keywordFunction___import;
+	m_keyWords[L"__import"] = SESC_keywordFunction___import;
 	m_keyWords[L"const"] = SESC_keywordFunction_const;
 	m_keyWords[L"if"] = SESC_keywordFunction_if;
 	m_keyWords[L"for"] = SESC_keywordFunction_for;

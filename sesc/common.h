@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 
 #define SESC_TokenSizeMax 500
 class SESC_module 
@@ -18,6 +19,13 @@ struct SESC_moduleFileListNode
 	std::vector<std::string> m_files;
 };
 
+enum SESC_CompilerState
+{
+	SESC_CompilerState_Stage0,
+	SESC_CompilerState_Stage1,
+	SESC_CompilerState_ScanImport, // scan other files (like #include) and then scan .seslib
+};
+
 struct SESC_compilation_data
 {
 	SESC_compilation_data() {}
@@ -25,8 +33,12 @@ struct SESC_compilation_data
 	{
 	}
 
+	SESC_CompilerState m_compiler_state = SESC_CompilerState::SESC_CompilerState_Stage0;
+
 	std::string out_file;
 	std::vector<std::string> input_files;
+
+	std::string m_currFilePath;
 
 	std::map<std::wstring, void(*)(SESC_compilation_data*)> m_keyWords;
 	void _initKeyWords();
@@ -59,9 +71,10 @@ struct SESC_compilation_data
 	bool m_moduleKeyIsFound = false;
 
 	int m_blockCount = 0; // { }
+
+	std::vector<std::string> m_importModuleList;
 };
 
-void SESC_stage0(SESC_compilation_data* cd);
-void SESC_stage1(SESC_compilation_data* cd);
+void SESC_doWork(SESC_compilation_data* cd);
 void SESC_printError(SESC_compilation_data* cd, const wchar_t* format, ...);
 void SESC_printErrorLn(SESC_compilation_data* cd, const wchar_t* format, ...);
