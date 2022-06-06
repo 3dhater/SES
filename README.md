@@ -13,60 +13,91 @@ Command line should be like this:
 
 Language
 ```cpp
+
+// if need to use things somewhere from this file
+MODULE module_name
+
+// use things from other file
+IMPORT module_name
+
+// function_name return_type : parameter_type parameter_name
+MyFunction UINT8 : INT8 i1 INT16 i2 INT32 i3 INT64 i4
+	// return value or variable
+	RETURN 0
+;
+
+// no return type(void printf())
+printf : INT8 fmt ...
+	// ARGC is the constant for this function. Number of arguments.
+	UINT32 argc ARGC
+	// or use just ARGC
+	ARG[0] = 0 // first parameter
+	// ARGC and ARG it's for something like va_list
+
+	UINT32 i 0
+	LOOP i < ARGC
+		ARG[i]
+		++i
+	;
+;
+
 // comment
-/*
-   multiline comment
-   
-   You can use any name (same C language rules) except next reserved names:
-   
-   Types:
-	   uint8
-	   uint16
-	   uint32
-	   uint64
-	   int8
-	   int16
-	   int32
-	   int64
-	   float16
-	   float32
-	   float64
-	
-	keywords:
-		__main{ return 0; } - C main, return integer. Only 1 per comp. unit.
-		__globals{} - put all global variables inside this block. Only 1 per comp. unit.
-		__globals_private{} - same as __globals but other modules will not see this variables. Only 1 per comp. unit.
-		__module name; - add this if other files need to see this file.
-		__import name; - use other module.
-		
-		const
-		if
-		for
-		while
-		break
-		return
-		
-	stdlib:
-		__sin
-		__cos
-*/
+ENTRY
 
-__module app;
-__import ses;
+	// one valiable in one line
+	// `type` `name` `value`
+	UINT8  u1 0
+	UINT16 u2   // can be without initialization
+	UINT32 u3 0
+	UINT64 u4 0
+	INT8  i1 0
+	INT16 i2 0
+	INT32 i3 0
+	INT64 i4 0
+	FLOAT16 f1 0
+	FLOAT32 f2 0
+	FLOAT64 f3 0
+	PTR ptr 0 // void*
+	// pointers like in C, *
+	UINT8* pu 0
 
-__globals
-{
-	uint8 g_a = 0;
-}
+	// array
+	UINT8 a1[10]
+	UINT8 a2[10] {1 2} // init only first 2
 
-__main()
-{
-	free();
-	return error_code;
-}
+	IF 1 > 0
+		// do something
+	; // end of IF
+
+	IF u1 == 0
+		// do something
+	ELSE
+		// do something
+	;
+
+	IF u1 == 1
+		// do something
+	ELIF u1 == 2
+		// do something
+	ELSE
+		// do something
+	;
+
+	IF u1 == 1
+		// do something
+	ELIF u1 == 2
+		// do something
+	;
+
+	// like `while`
+	LOOP 1 == 1
+		BREAK
+	;
+
+	// CALL function_name arguments
+	CALL MyFunction arg1 arg2 i1 i2 i3 i4
+;
+
 ```
 
-asm
-```
 
-```

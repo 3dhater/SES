@@ -19,21 +19,12 @@ struct SESC_moduleFileListNode
 	std::vector<std::string> m_files;
 };
 
-enum SESC_CompilerState
-{
-	SESC_CompilerState_Stage0,
-	SESC_CompilerState_Stage1,
-	SESC_CompilerState_ScanImport, // scan other files (like #include) and then scan .seslib
-};
-
 struct SESC_compilation_data
 {
 	SESC_compilation_data() {}
 	~SESC_compilation_data() 
 	{
 	}
-
-	SESC_CompilerState m_compiler_state = SESC_CompilerState::SESC_CompilerState_Stage0;
 
 	std::string out_file;
 	std::vector<std::string> input_files;
